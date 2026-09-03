@@ -57,6 +57,12 @@ public class BoardService : IBoardService
             .Include(b => b.Workspace)
                 .ThenInclude(w => w.Members)
             .Include(b => b.Lists)
+                .ThenInclude(l => l.Cards)
+                    .ThenInclude(c => c.Comments)
+            .Include(b => b.Lists)
+                .ThenInclude(l => l.Cards)
+                    .ThenInclude(c => c.Checklists)
+                        .ThenInclude(ch => ch.Items)
             .FirstOrDefaultAsync(b => b.Id == boardId, cancellationToken);
 
         if (board == null)
@@ -78,7 +84,23 @@ public class BoardService : IBoardService
                 l.Title,
                 l.Position,
                 l.IsArchived,
-                new List<CardSummaryResponse>()
+                l.Cards
+                    .OrderBy(c => c.Position)
+                    .Select(c => new CardSummaryResponse(
+                        c.Id,
+                        c.ListId,
+                        c.Title,
+                        c.Description,
+                        c.Position,
+                        c.DueDate,
+                        c.IsComplete,
+                        c.CoverColor,
+                        c.CoverImageUrl,
+                        c.Comments.Count,
+                        c.Checklists.Sum(ch => ch.Items.Count),
+                        c.Checklists.Sum(ch => ch.Items.Count(i => i.IsChecked))
+                    ))
+                    .ToList()
             ))
             .ToList();
 

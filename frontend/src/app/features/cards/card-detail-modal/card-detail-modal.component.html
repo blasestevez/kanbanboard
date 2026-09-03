@@ -1,0 +1,694 @@
+<div class="modal-backdrop" (click)="onCloseModal()">
+  <div class="card-detail-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="card-modal-title">
+    <!-- Cover Bar -->
+    @if (card()?.coverColor; as coverColor) {
+      <div class="modal-cover-bar" [style.backgroundColor]="coverColor">
+        <button type="button" class="btn-cover-action" (click)="setCoverColor(null)" title="Remove cover color">
+          Remove Cover
+        </button>
+      </div>
+    }
+
+    <!-- Loading Skeleton -->
+    @if (isLoading()) {
+      <div class="modal-loading-box">
+        <span class="spinner"></span>
+        <span>Loading card details...</span>
+      </div>
+    }
+
+    @if (!isLoading() && card(); as c) {
+      <!-- Modal Header -->
+      <div class="modal-top-header">
+        <div class="header-left-col">
+          <!-- Check Complete Checkbox -->
+          <button
+            type="button"
+            class="btn-toggle-complete"
+            [class.is-complete]="c.isComplete"
+            (click)="toggleCompleted()"
+            title="Mark card as complete"
+          >
+            @if (c.isComplete) {
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            }
+          </button>
+
+          <div class="title-meta-box">
+            @if (isEditingTitle()) {
+              <div class="title-inline-edit">
+                <input
+                  type="text"
+                  [formControl]="titleControl"
+                  (blur)="saveTitle()"
+                  (keydown.enter)="saveTitle()"
+                  (keydown.escape)="cancelEditTitle()"
+                  class="title-input-box"
+                  autofocus
+                />
+              </div>
+            } @else {
+              <h2
+                id="card-modal-title"
+                class="card-main-title"
+                (click)="startEditTitle()"
+                title="Click to edit title"
+              >
+                {{ c.title }}
+              </h2>
+            }
+            <div class="card-list-subtitle">
+              in list <span class="list-highlight">{{ currentListName() }}</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-close-modal" (click)="onCloseModal()" aria-label="Close modal">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Alerts inside Card Modal -->
+      @if (errorMessage()) {
+        <div class="alert alert-error">
+          <div class="alert-content">
+            <svg class="alert-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        </div>
+      }
+
+      <!-- Modal Body (2 Columns) -->
+      <div class="modal-body-grid">
+        <!-- Main Column (Left) -->
+        <div class="modal-main-content">
+          <!-- Metadata Badges Section (Members, Labels, Due Date) -->
+          @if (c.members.length > 0 || c.labels.length > 0 || c.dueDate) {
+            <div class="card-meta-row">
+              <!-- Assigned Members -->
+              @if (c.members.length > 0) {
+                <div class="meta-group">
+                  <span class="meta-group-title">Members</span>
+                  <div class="members-chips-list">
+                    @for (m of c.members; track m.userId) {
+                      <div class="member-chip" [title]="m.fullName + ' (' + m.email + ')'">
+                        @if (m.avatarUrl) {
+                          <img [src]="m.avatarUrl" [alt]="m.fullName" class="chip-avatar" />
+                        } @else {
+                          <span class="chip-initials">{{ getInitials(m.fullName) }}</span>
+                        }
+                      </div>
+                    }
+                    <button type="button" class="btn-add-chip" (click)="togglePopover('members')" title="Add members">
+                      <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Assigned Labels -->
+              @if (c.labels.length > 0) {
+                <div class="meta-group">
+                  <span class="meta-group-title">Labels</span>
+                  <div class="labels-chips-list">
+                    @for (lbl of c.labels; track lbl.id) {
+                      <span class="label-chip" [style.backgroundColor]="lbl.color">
+                        {{ lbl.name }}
+                      </span>
+                    }
+                    <button type="button" class="btn-add-chip" (click)="togglePopover('labels')" title="Add labels">
+                      <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Due Date -->
+              @if (c.dueDate) {
+                <div class="meta-group">
+                  <span class="meta-group-title">Due date</span>
+                  <div class="due-date-pill" [class.overdue]="isOverdue()" [class.complete]="c.isComplete">
+                    <input
+                      type="checkbox"
+                      [checked]="c.isComplete"
+                      (change)="toggleCompleted()"
+                      class="date-checkbox"
+                    />
+                    <span class="date-text">{{ c.dueDate | date:'MMM d, y, h:mm a' }}</span>
+                    @if (isOverdue()) {
+                      <span class="status-tag tag-overdue">Overdue</span>
+                    } @else if (c.isComplete) {
+                      <span class="status-tag tag-complete">Complete</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Description Section -->
+          <div class="detail-section">
+            <div class="section-heading-row">
+              <div class="section-title-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="section-icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                <h3>Description</h3>
+              </div>
+              @if (!isEditingDescription() && c.description) {
+                <button type="button" class="btn btn-secondary btn-sm" (click)="startEditDescription()">
+                  Edit
+                </button>
+              }
+            </div>
+
+            @if (isEditingDescription()) {
+              <div class="description-edit-box">
+                <textarea
+                  [formControl]="descriptionControl"
+                  class="form-textarea desc-textarea"
+                  placeholder="Add a more detailed description..."
+                  rows="4"
+                  autofocus
+                ></textarea>
+                <div class="desc-actions">
+                  <button type="button" class="btn btn-primary btn-sm" (click)="saveDescription()">
+                    Save
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditDescription()">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div
+                class="description-view-box"
+                [class.empty-desc]="!c.description"
+                (click)="startEditDescription()"
+              >
+                @if (c.description) {
+                  <p class="desc-paragraph">{{ c.description }}</p>
+                } @else {
+                  <p class="desc-placeholder">Add a more detailed description...</p>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Checklists Section -->
+          @for (chk of c.checklists; track chk.id) {
+            <div class="detail-section checklist-section">
+              <div class="section-heading-row">
+                <div class="section-title-with-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="section-icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  <h3>{{ chk.title }}</h3>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm btn-delete-chk" (click)="deleteChecklist(chk.id)">
+                  Delete
+                </button>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="progress-bar-row">
+                <span class="progress-text">{{ getChecklistProgress(chk) }}%</span>
+                <div class="progress-track">
+                  <div
+                    class="progress-fill"
+                    [class.fill-complete]="getChecklistProgress(chk) === 100"
+                    [style.width.%]="getChecklistProgress(chk)"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Checklist Items List -->
+              <div class="checklist-items">
+                @for (item of chk.items; track item.id) {
+                  <div class="checklist-item-row" [class.item-checked]="item.isChecked">
+                    <input
+                      type="checkbox"
+                      [checked]="item.isChecked"
+                      (change)="toggleChecklistItem(item, chk)"
+                      class="chk-item-checkbox"
+                    />
+                    <span class="chk-item-text">{{ item.text }}</span>
+                    <button
+                      type="button"
+                      class="btn-delete-item"
+                      (click)="deleteChecklistItem(item.id, chk)"
+                      title="Delete item"
+                    >
+                      ×
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Add Item to Checklist -->
+              @if (activeChecklistAddingId() === chk.id) {
+                <div class="add-item-form">
+                  <input
+                    type="text"
+                    [value]="newChecklistItemText()"
+                    (input)="newChecklistItemText.set($any($event.target).value)"
+                    (keydown.enter)="onAddChecklistItem(chk.id)"
+                    (keydown.escape)="cancelAddItemToChecklist()"
+                    class="form-input add-item-input"
+                    placeholder="Add an item..."
+                    autofocus
+                  />
+                  <div class="add-item-actions">
+                    <button type="button" class="btn btn-primary btn-sm" (click)="onAddChecklistItem(chk.id)">
+                      Add
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="cancelAddItemToChecklist()">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <button type="button" class="btn btn-secondary btn-sm btn-add-item" (click)="startAddItemToChecklist(chk.id)">
+                  + Add an item
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Attachments Section -->
+          @if (c.attachments.length > 0) {
+            <div class="detail-section">
+              <div class="section-title-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="section-icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                <h3>Attachments</h3>
+              </div>
+
+              <div class="attachments-list">
+                @for (att of c.attachments; track att.id) {
+                  <div class="attachment-item">
+                    <div class="att-thumbnail">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div class="att-meta">
+                      <a [href]="att.fileUrl" target="_blank" rel="noopener noreferrer" class="att-filename">
+                        {{ att.fileName }}
+                      </a>
+                      <div class="att-submeta">
+                        <span>{{ formatBytes(att.fileSizeBytes) }}</span>
+                        <span>• Added {{ att.createdAt | date:'short' }}</span>
+                      </div>
+                      <div class="att-actions">
+                        <a [href]="att.fileUrl" target="_blank" download class="att-action-link">Download</a>
+                        <button type="button" class="att-action-link att-delete" (click)="deleteAttachment(att.id)">
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Comments & Activity Section -->
+          <div class="detail-section">
+            <div class="section-title-with-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="section-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <h3>Activity & Comments</h3>
+            </div>
+
+            <!-- New Comment Box -->
+            <div class="add-comment-box">
+              <div class="user-avatar-sm">
+                <span>{{ getInitials(currentUser()?.fullName || 'U') }}</span>
+              </div>
+              <div class="comment-input-wrapper">
+                <textarea
+                  [value]="newCommentText()"
+                  (input)="newCommentText.set($any($event.target).value)"
+                  placeholder="Write a comment..."
+                  class="form-textarea comment-textarea"
+                  rows="2"
+                ></textarea>
+                @if (newCommentText().trim()) {
+                  <div class="comment-actions">
+                    <button type="button" class="btn btn-primary btn-sm" (click)="onAddComment()">
+                      Save
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Comments List -->
+            <div class="comments-feed">
+              @for (comment of c.comments; track comment.id) {
+                <div class="comment-item">
+                  <div class="user-avatar-sm">
+                    @if (comment.authorAvatarUrl) {
+                      <img [src]="comment.authorAvatarUrl" [alt]="comment.authorName" />
+                    } @else {
+                      <span>{{ getInitials(comment.authorName) }}</span>
+                    }
+                  </div>
+                  <div class="comment-content-box">
+                    <div class="comment-header">
+                      <span class="author-name">{{ comment.authorName }}</span>
+                      <span class="comment-date">{{ comment.createdAt | date:'short' }}</span>
+                      @if (comment.updatedAt) {
+                        <span class="edited-tag">(edited)</span>
+                      }
+                    </div>
+
+                    @if (editingCommentId() === comment.id) {
+                      <div class="comment-edit-form">
+                        <textarea
+                          [value]="editingCommentText()"
+                          (input)="editingCommentText.set($any($event.target).value)"
+                          class="form-textarea comment-textarea"
+                          rows="2"
+                        ></textarea>
+                        <div class="comment-actions">
+                          <button type="button" class="btn btn-primary btn-sm" (click)="saveEditComment(comment)">
+                            Save
+                          </button>
+                          <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditComment()">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="comment-bubble">
+                        {{ comment.text }}
+                      </div>
+                      @if (currentUser()?.id === comment.authorId) {
+                        <div class="comment-footer-actions">
+                          <button type="button" class="btn-link-action" (click)="startEditComment(comment)">
+                            Edit
+                          </button>
+                          <span>•</span>
+                          <button type="button" class="btn-link-action btn-danger-text" (click)="deleteComment(comment.id)">
+                            Delete
+                          </button>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Actions Column (Right) -->
+        <div class="modal-sidebar-col">
+          <div class="sidebar-action-group">
+            <span class="sidebar-heading">Add to card</span>
+
+            <!-- Members Button & Popover -->
+            <div class="action-btn-wrapper">
+              <button type="button" class="btn-sidebar-action" (click)="togglePopover('members')">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+                <span>Members</span>
+              </button>
+
+              @if (activePopover() === 'members') {
+                <div class="sidebar-popover" (click)="$event.stopPropagation()">
+                  <div class="popover-header">
+                    <span>Members</span>
+                    <button type="button" class="btn-close-popover" (click)="closePopover()">×</button>
+                  </div>
+                  <div class="popover-body">
+                    <div class="members-select-list">
+                      @for (member of workspaceMembers(); track member.userId) {
+                        <button
+                          type="button"
+                          class="member-select-item"
+                          [class.selected]="isMemberAssigned(member.userId)"
+                          (click)="toggleMember(member)"
+                        >
+                          <div class="member-avatar-mini">
+                            <span>{{ getInitials(member.fullName) }}</span>
+                          </div>
+                          <span class="member-full-name">{{ member.fullName }}</span>
+                          @if (isMemberAssigned(member.userId)) {
+                            <svg viewBox="0 0 20 20" fill="currentColor" class="check-icon">
+                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Labels Button & Popover -->
+            <div class="action-btn-wrapper">
+              <button type="button" class="btn-sidebar-action" (click)="togglePopover('labels')">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                  <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                </svg>
+                <span>Labels</span>
+              </button>
+
+              @if (activePopover() === 'labels') {
+                <div class="sidebar-popover" (click)="$event.stopPropagation()">
+                  <div class="popover-header">
+                    <span>Labels</span>
+                    <button type="button" class="btn-close-popover" (click)="closePopover()">×</button>
+                  </div>
+                  <div class="popover-body">
+                    <div class="labels-select-list">
+                      @for (lbl of boardLabels(); track lbl.id) {
+                        <div class="label-select-row">
+                          <button
+                            type="button"
+                            class="label-color-bar"
+                            [style.backgroundColor]="lbl.color"
+                            (click)="toggleLabel(lbl)"
+                          >
+                            <span>{{ lbl.name }}</span>
+                            @if (isLabelAssigned(lbl.id)) {
+                              <svg viewBox="0 0 20 20" fill="currentColor" class="check-icon-white">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                              </svg>
+                            }
+                          </button>
+                        </div>
+                      }
+                    </div>
+
+                    <div class="popover-divider"></div>
+                    <div class="create-label-box">
+                      <span class="create-subheading">Create a new label</span>
+                      <input
+                        type="text"
+                        [value]="newLabelName()"
+                        (input)="newLabelName.set($any($event.target).value)"
+                        class="form-input"
+                        placeholder="Label title..."
+                      />
+                      <div class="label-colors-picker">
+                        @for (c of labelColors; track c) {
+                          <button
+                            type="button"
+                            class="color-dot"
+                            [style.backgroundColor]="c"
+                            [class.selected]="newLabelColor() === c"
+                            (click)="newLabelColor.set(c)"
+                          ></button>
+                        }
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-primary btn-sm btn-full"
+                        [disabled]="!newLabelName().trim()"
+                        (click)="onCreateLabel()"
+                      >
+                        Create & Apply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Checklist Button & Popover -->
+            <div class="action-btn-wrapper">
+              <button type="button" class="btn-sidebar-action" (click)="togglePopover('checklist')">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                  <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span>Checklist</span>
+              </button>
+
+              @if (activePopover() === 'checklist') {
+                <div class="sidebar-popover" (click)="$event.stopPropagation()">
+                  <div class="popover-header">
+                    <span>Add checklist</span>
+                    <button type="button" class="btn-close-popover" (click)="closePopover()">×</button>
+                  </div>
+                  <div class="popover-body">
+                    <input
+                      type="text"
+                      [value]="newChecklistTitle()"
+                      (input)="newChecklistTitle.set($any($event.target).value)"
+                      (keydown.enter)="onCreateChecklist()"
+                      class="form-input"
+                      placeholder="Checklist title..."
+                      autofocus
+                    />
+                    <button type="button" class="btn btn-primary btn-sm btn-full" (click)="onCreateChecklist()">
+                      Add
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Dates Button & Popover -->
+            <div class="action-btn-wrapper">
+              <button type="button" class="btn-sidebar-action" (click)="togglePopover('dates')">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                  <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                </svg>
+                <span>Dates</span>
+              </button>
+
+              @if (activePopover() === 'dates') {
+                <div class="sidebar-popover" (click)="$event.stopPropagation()">
+                  <div class="popover-header">
+                    <span>Dates</span>
+                    <button type="button" class="btn-close-popover" (click)="closePopover()">×</button>
+                  </div>
+                  <div class="popover-body">
+                    <label class="popover-label">Due date</label>
+                    <input
+                      type="date"
+                      [value]="dueDateInput()"
+                      (input)="dueDateInput.set($any($event.target).value)"
+                      class="form-input"
+                    />
+                    <div class="popover-actions">
+                      <button type="button" class="btn btn-primary btn-sm" (click)="saveDueDate()">
+                        Save
+                      </button>
+                      @if (c.dueDate) {
+                        <button type="button" class="btn btn-danger-outline btn-sm" (click)="removeDueDate()">
+                          Remove
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Attachment Button (Hidden File Input Trigger) -->
+            <label class="btn-sidebar-action btn-upload-label" title="Attach a file">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd" />
+              </svg>
+              <span>Attachment</span>
+              <input type="file" (change)="onFileUpload($event)" class="file-input-hidden" />
+            </label>
+
+            <!-- Cover Button & Popover -->
+            <div class="action-btn-wrapper">
+              <button type="button" class="btn-sidebar-action" (click)="togglePopover('cover')">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                  <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                </svg>
+                <span>Cover</span>
+              </button>
+
+              @if (activePopover() === 'cover') {
+                <div class="sidebar-popover" (click)="$event.stopPropagation()">
+                  <div class="popover-header">
+                    <span>Cover</span>
+                    <button type="button" class="btn-close-popover" (click)="closePopover()">×</button>
+                  </div>
+                  <div class="popover-body">
+                    <div class="cover-palette-grid">
+                      @for (c of coverColors; track c) {
+                        <button
+                          type="button"
+                          class="cover-swatch-item"
+                          [style.backgroundColor]="c"
+                          (click)="setCoverColor(c)"
+                        ></button>
+                      }
+                    </div>
+                    @if (card()?.coverColor) {
+                      <button type="button" class="btn btn-secondary btn-sm btn-full" (click)="setCoverColor(null)">
+                        Remove cover
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="sidebar-action-group">
+            <span class="sidebar-heading">Actions</span>
+            <button type="button" class="btn-sidebar-action btn-danger-action" (click)="openDeleteCardModal()">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="action-icon">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Delete Card Confirmation Modal -->
+  @if (isDeleteConfirmOpen()) {
+    <div class="modal-backdrop-inner" (click)="closeDeleteCardModal()">
+      <div class="modal-card modal-card-sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <div class="modal-icon-badge badge-danger">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="modal-title">Delete Card</h2>
+            <p class="modal-subtitle">Are you sure you want to delete this card? All comments, attachments and checklist history will be lost.</p>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeDeleteCardModal()">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-danger" (click)="confirmDeleteCard()">
+            Delete Card
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

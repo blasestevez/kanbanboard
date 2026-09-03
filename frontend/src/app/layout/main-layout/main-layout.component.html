@@ -1,0 +1,17 @@
+<div class="layout-container">
+  <app-navbar (toggleSidebar)="toggleSidebar()" />
+
+  <div class="layout-body">
+    <app-sidebar [isOpen]="isSidebarOpen()" (closeSidebar)="closeSidebar()" />
+
+    @if (isSidebarOpen()) {
+      <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+    }
+
+    <main class="layout-content">
+      <router-outlet />
+    </main>
+  </div>
+
+  <app-toast />
+</div>

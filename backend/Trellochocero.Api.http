@@ -1,0 +1,6 @@
+@Trellochocero.Api_HostAddress = http://localhost:5030
+
+GET {{Trellochocero.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

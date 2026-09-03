@@ -8,11 +8,16 @@ namespace Trellochocero.Api.Services;
 public class BoardService : IBoardService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IBoardRealtimeNotifier _realtimeNotifier;
     private readonly ILogger<BoardService> _logger;
 
-    public BoardService(AppDbContext dbContext, ILogger<BoardService> logger)
+    public BoardService(
+        AppDbContext dbContext,
+        IBoardRealtimeNotifier realtimeNotifier,
+        ILogger<BoardService> logger)
     {
         _dbContext = dbContext;
+        _realtimeNotifier = realtimeNotifier;
         _logger = logger;
     }
 
@@ -243,6 +248,14 @@ public class BoardService : IBoardService
         board.IsClosed = request.IsClosed;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var updatePayload = new BoardUpdatedPayload(
+            board.Title,
+            board.BackgroundColor,
+            board.BackgroundImageUrl,
+            board.IsClosed
+        );
+        await _realtimeNotifier.NotifyBoardUpdatedAsync(board.Id, updatePayload, cancellationToken);
 
         var listResponses = board.Lists
             .OrderBy(l => l.Position)

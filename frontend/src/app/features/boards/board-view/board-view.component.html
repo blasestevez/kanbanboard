@@ -41,6 +41,16 @@
         }
 
         <span class="board-role-tag">{{ b.currentUserRole }}</span>
+
+        <!-- Live Connection Status Badge -->
+        <div
+          class="live-status-badge"
+          [class.connected]="isRealtimeConnected()"
+          [title]="isRealtimeConnected() ? 'Sincronizado en tiempo real' : 'Conectando tiempo real...'"
+        >
+          <span class="live-dot"></span>
+          <span class="live-text">{{ isRealtimeConnected() ? 'En Vivo' : 'Conectando...' }}</span>
+        </div>
       </div>
 
       <div class="header-right">
@@ -121,7 +131,7 @@
   }
 
   @if (!isLoading() && board(); as b) {
-    <div class="canvas-wrapper" cdkDropListGroup>
+    <div class="canvas-wrapper">
       <div
         class="lists-container"
         cdkDropList
@@ -193,6 +203,8 @@
             <div
               class="cards-list"
               cdkDropList
+              [id]="'cards-list-' + list.id"
+              [cdkDropListConnectedTo]="connectedLists()"
               [cdkDropListData]="list.cards"
               (cdkDropListDropped)="onCardDrop($event, list)"
             >
@@ -200,6 +212,7 @@
                 <div
                   class="card-item"
                   cdkDrag
+                  [cdkDragData]="card"
                   [cdkDragDisabled]="!canEdit()"
                   (click)="openCardModal(card)"
                 >

@@ -1,6 +1,7 @@
 import {
   Component,
   HostListener,
+  OnDestroy,
   OnInit,
   computed,
   inject,
@@ -15,12 +16,12 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import {
   CdkDrag,
   CdkDragDrop,
   CdkDragHandle,
   CdkDropList,
-  CdkDropListGroup,
   moveItemInArray,
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
@@ -28,6 +29,7 @@ import { BoardService } from '../../../core/services/board.service';
 import { CardService } from '../../../core/services/card.service';
 import { WorkspaceService } from '../../../core/services/workspace.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { BoardRealtimeService } from '../../../core/services/board-realtime.service';
 import {
   BoardColorOption,
   BoardDetail,
@@ -46,7 +48,6 @@ import { CardDetailModalComponent } from '../../cards/card-detail-modal/card-det
     FormsModule,
     ReactiveFormsModule,
     RouterLink,
-    CdkDropListGroup,
     CdkDropList,
     CdkDrag,
     CdkDragHandle,
@@ -55,7 +56,7 @@ import { CardDetailModalComponent } from '../../cards/card-detail-modal/card-det
   templateUrl: './board-view.component.html',
   styleUrl: './board-view.component.scss',
 })
-export class BoardViewComponent implements OnInit {
+export class BoardViewComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -63,11 +64,17 @@ export class BoardViewComponent implements OnInit {
   private readonly cardService = inject(CardService);
   private readonly workspaceService = inject(WorkspaceService);
   private readonly toastService = inject(ToastService);
+  private readonly realtimeService = inject(BoardRealtimeService);
+  private realtimeSubs: Subscription[] = [];
 
   readonly board = this.boardService.activeBoard;
   readonly isLoading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+  readonly isRealtimeConnected = this.realtimeService.isConnected;
+  readonly connectedLists = computed(
+    () => this.board()?.lists.map((l) => 'cards-list-' + l.id) ?? []
+  );
 
   // Card detail modal
   readonly selectedCardId = signal<string | null>(null);
@@ -151,9 +158,72 @@ export class BoardViewComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadBoard(id);
+      this.connectRealtime(id);
     } else {
       this.router.navigate(['/workspaces']);
     }
+  }
+
+  ngOnDestroy(): void {
+    const b = this.board();
+    if (b) {
+      this.realtimeService.leaveBoard(b.id);
+    }
+    this.realtimeService.disconnect();
+    this.realtimeSubs.forEach((s) => s.unsubscribe());
+    this.realtimeSubs = [];
+  }
+
+  private connectRealtime(boardId: string): void {
+    this.realtimeService.joinBoard(boardId);
+
+    this.realtimeSubs.push(
+      this.realtimeService.boardUpdated$.subscribe((evt) => {
+        this.boardService.updateActiveBoard({
+          title: evt.title,
+          backgroundColor: evt.backgroundColor,
+          backgroundImageUrl: evt.backgroundImageUrl,
+          isClosed: evt.isClosed,
+        });
+      }),
+
+      this.realtimeService.listCreated$.subscribe((newList) => {
+        this.boardService.addListToActiveBoard(newList);
+      }),
+
+      this.realtimeService.listUpdated$.subscribe((updatedList) => {
+        this.boardService.updateListInActiveBoard(updatedList);
+      }),
+
+      this.realtimeService.listDeleted$.subscribe((listId) => {
+        this.boardService.removeListFromActiveBoard(listId);
+      }),
+
+      this.realtimeService.listsReordered$.subscribe((listIds) => {
+        this.boardService.reorderListsInActiveBoard(listIds);
+      }),
+
+      this.realtimeService.cardCreated$.subscribe((newCard) => {
+        this.boardService.addOrUpdateCardInActiveBoard(newCard);
+      }),
+
+      this.realtimeService.cardUpdated$.subscribe((updatedCard) => {
+        this.boardService.addOrUpdateCardInActiveBoard(updatedCard);
+      }),
+
+      this.realtimeService.cardMoved$.subscribe((moveEvt) => {
+        this.boardService.moveCardInActiveBoard(
+          moveEvt.cardId,
+          moveEvt.sourceListId,
+          moveEvt.targetListId,
+          moveEvt.newPosition
+        );
+      }),
+
+      this.realtimeService.cardDeleted$.subscribe((delEvt) => {
+        this.boardService.removeCardFromActiveBoard(delEvt.cardId, delEvt.listId);
+      })
+    );
   }
 
   loadBoard(id: string): void {
@@ -296,6 +366,9 @@ export class BoardViewComponent implements OnInit {
 
     movedCard.listId = targetList.id;
 
+    // Reactively update board lists signal
+    this.boardService.setActiveBoardLists([...b.lists]);
+
     this.cardService
       .moveCard(movedCard.id, {
         targetListId: targetList.id,
@@ -420,22 +493,7 @@ export class BoardViewComponent implements OnInit {
         this.newCardTitle.set('');
         this.activeAddingCardListId.set(null);
 
-        // Append to local list
-        const cardSummary: CardSummary = {
-          id: created.id,
-          listId: created.listId,
-          title: created.title,
-          description: created.description,
-          position: created.position,
-          dueDate: created.dueDate,
-          isComplete: created.isComplete,
-          coverColor: created.coverColor,
-          coverImageUrl: created.coverImageUrl,
-          commentsCount: 0,
-          checklistItemsTotal: 0,
-          checklistItemsChecked: 0,
-        };
-        list.cards.push(cardSummary);
+        this.boardService.addOrUpdateCardInActiveBoard(created);
         this.toastService.success(`Card "${created.title}" created.`);
       },
       error: (err: HttpErrorResponse) => {
@@ -455,42 +513,11 @@ export class BoardViewComponent implements OnInit {
   }
 
   onCardUpdated(updatedCard: CardDetail): void {
-    const b = this.board();
-    if (!b) return;
-
-    for (const list of b.lists) {
-      const cardIdx = list.cards.findIndex((c) => c.id === updatedCard.id);
-      if (cardIdx !== -1) {
-        list.cards[cardIdx] = {
-          ...list.cards[cardIdx],
-          title: updatedCard.title,
-          description: updatedCard.description,
-          dueDate: updatedCard.dueDate,
-          isComplete: updatedCard.isComplete,
-          coverColor: updatedCard.coverColor,
-          coverImageUrl: updatedCard.coverImageUrl,
-          commentsCount: updatedCard.comments.length,
-          checklistItemsTotal: updatedCard.checklists.reduce(
-            (acc, chk) => acc + chk.items.length,
-            0
-          ),
-          checklistItemsChecked: updatedCard.checklists.reduce(
-            (acc, chk) => acc + chk.items.filter((i) => i.isChecked).length,
-            0
-          ),
-        };
-        break;
-      }
-    }
+    this.boardService.addOrUpdateCardInActiveBoard(updatedCard);
   }
 
   onCardDeleted(deletedCardId: string): void {
-    const b = this.board();
-    if (!b) return;
-
-    for (const list of b.lists) {
-      list.cards = list.cards.filter((c) => c.id !== deletedCardId);
-    }
+    this.boardService.removeCardFromActiveBoard(deletedCardId);
     this.closeCardModal();
     this.toastService.success('Card deleted.');
   }

@@ -115,6 +115,19 @@ public static class ServiceCollectionExtensions
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/board"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
 
         return services;
@@ -123,6 +136,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApplicationServices(
         this IServiceCollection services)
     {
+        services.AddSignalR();
         services.AddHttpClient("GitHubAuth");
         services.AddHttpClient();
         services.AddScoped<IAuthService, AuthService>();
@@ -130,6 +144,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBoardService, BoardService>();
         services.AddScoped<IListService, ListService>();
         services.AddScoped<ICardService, CardService>();
+        services.AddScoped<IBoardRealtimeNotifier, BoardRealtimeNotifier>();
 
         return services;
     }

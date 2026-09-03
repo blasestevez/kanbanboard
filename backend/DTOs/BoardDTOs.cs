@@ -52,3 +52,20 @@ public record CardSummaryResponse(
     int CommentsCount,
     int ChecklistItemsTotal,
     int ChecklistItemsChecked);
+
+// Real-time Event Payloads
+public record BoardUpdatedPayload(
+    string Title,
+    string? BackgroundColor,
+    string? BackgroundImageUrl,
+    bool IsClosed);
+
+public record CardMovedPayload(
+    Guid CardId,
+    Guid SourceListId,
+    Guid TargetListId,
+    int NewPosition);
+
+public record CardDeletedPayload(
+    Guid CardId,
+    Guid ListId);

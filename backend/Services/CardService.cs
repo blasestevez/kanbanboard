@@ -9,15 +9,18 @@ namespace Trellochocero.Api.Services;
 public class CardService : ICardService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IBoardRealtimeNotifier _realtimeNotifier;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<CardService> _logger;
 
     public CardService(
         AppDbContext dbContext,
+        IBoardRealtimeNotifier realtimeNotifier,
         IWebHostEnvironment environment,
         ILogger<CardService> logger)
     {
         _dbContext = dbContext;
+        _realtimeNotifier = realtimeNotifier;
         _environment = environment;
         _logger = logger;
     }
@@ -101,6 +104,8 @@ public class CardService : ICardService
             new List<CommentResponse>(),
             new List<AttachmentResponse>()
         );
+
+        await _realtimeNotifier.NotifyCardCreatedAsync(list.BoardId, response, cancellationToken);
 
         return Result<CardDetailResponse>.Created(response);
     }
@@ -197,7 +202,14 @@ public class CardService : ICardService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result<CardDetailResponse>.Success(MapToDetailResponse(card));
+        var response = MapToDetailResponse(card);
+        var boardId = card.List?.BoardId ?? Guid.Empty;
+        if (boardId != Guid.Empty)
+        {
+            await _realtimeNotifier.NotifyCardUpdatedAsync(boardId, response, cancellationToken);
+        }
+
+        return Result<CardDetailResponse>.Success(response);
     }
 
     public async Task<Result<bool>> MoveCardAsync(Guid cardId, MoveCardRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
@@ -233,6 +245,7 @@ public class CardService : ICardService
             return Result<bool>.Failure("Target list not found.", 404);
         }
 
+        var boardId = card.List.BoardId;
         var sourceListId = card.ListId;
         var oldPosition = card.Position;
         var newPosition = Math.Max(0, request.NewPosition);
@@ -266,10 +279,11 @@ public class CardService : ICardService
             }
 
             var targetListCards = await _dbContext.Cards
-                .Where(c => c.ListId == request.TargetListId)
+                .Where(c => c.ListId == request.TargetListId && c.Id != cardId)
                 .OrderBy(c => c.Position)
                 .ToListAsync(cancellationToken);
 
+            card.List = targetList;
             card.ListId = request.TargetListId;
             targetListCards.Insert(Math.Min(newPosition, targetListCards.Count), card);
 
@@ -280,6 +294,9 @@ public class CardService : ICardService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _realtimeNotifier.NotifyCardMovedAsync(boardId, card.Id, sourceListId, targetList.Id, request.NewPosition, cancellationToken);
+
         return Result<bool>.Success(true, 204);
     }
 
@@ -308,8 +325,15 @@ public class CardService : ICardService
             return Result<bool>.Failure("Observers cannot delete cards.", 403);
         }
 
+        var boardId = card.List.BoardId;
+        var listId = card.ListId;
+        var deletedCardId = card.Id;
+
         _dbContext.Cards.Remove(card);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _realtimeNotifier.NotifyCardDeletedAsync(boardId, deletedCardId, listId, cancellationToken);
+
         return Result<bool>.Success(true, 204);
     }
 

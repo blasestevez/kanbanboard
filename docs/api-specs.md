@@ -265,3 +265,30 @@ public record UpdateChecklistItemRequest(string Text, bool IsChecked);
 public record CreateCommentRequest(string Text);
 public record UpdateCommentRequest(string Text);
 ```
+
+---
+
+## Real-Time SignalR Hub (Fase 5 — Real-time Updates)
+
+**Hub Endpoint**: `/hubs/board`  
+**Protocol**: WebSockets / Server-Sent Events / Long Polling (fallback)  
+**Auth**: Bearer token via `access_token` query parameter or `Authorization` header.
+
+### Client-to-Server Methods
+- `JoinBoard(string boardId)`: Agrega la conexión al grupo `board-{boardId}` para recibir eventos en tiempo real de ese tablero.
+- `LeaveBoard(string boardId)`: Remueve la conexión del grupo `board-{boardId}` al abandonar el tablero.
+
+### Server-to-Client Broadcast Events (emitidos al grupo `board-{boardId}`)
+
+| Evento | Payload | Descripción |
+|:-------|:--------|:------------|
+| `BoardUpdated` | `{ title: string, backgroundColor?: string, backgroundImageUrl?: string, isClosed: boolean }` | Notifica cambios de metadatos o apariencia del tablero |
+| `ListCreated` | `BoardListResponse` | Notifica la creación de una nueva lista en el tablero |
+| `ListUpdated` | `BoardListResponse` | Notifica cambios en el título o estado de una lista |
+| `ListDeleted` | `Guid listId` | Notifica la eliminación de una lista |
+| `ListsReordered` | `List<Guid> listIds` | Notifica el nuevo orden horizontal de las listas |
+| `CardCreated` | `CardDetailResponse` | Notifica la creación de una nueva tarjeta |
+| `CardUpdated` | `CardDetailResponse` | Notifica la edición de una tarjeta (título, fechas, covers) |
+| `CardMoved` | `{ cardId: Guid, sourceListId: Guid, targetListId: Guid, newPosition: int }` | Notifica movimiento de tarjeta dentro de lista o entre listas |
+| `CardDeleted` | `{ cardId: Guid, listId: Guid }` | Notifica la eliminación de una tarjeta |
+

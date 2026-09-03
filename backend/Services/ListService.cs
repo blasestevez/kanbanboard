@@ -8,11 +8,16 @@ namespace Trellochocero.Api.Services;
 public class ListService : IListService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IBoardRealtimeNotifier _realtimeNotifier;
     private readonly ILogger<ListService> _logger;
 
-    public ListService(AppDbContext dbContext, ILogger<ListService> logger)
+    public ListService(
+        AppDbContext dbContext,
+        IBoardRealtimeNotifier realtimeNotifier,
+        ILogger<ListService> logger)
     {
         _dbContext = dbContext;
+        _realtimeNotifier = realtimeNotifier;
         _logger = logger;
     }
 
@@ -81,6 +86,8 @@ public class ListService : IListService
             new List<CardSummaryResponse>()
         );
 
+        await _realtimeNotifier.NotifyListCreatedAsync(boardId, response, cancellationToken);
+
         return Result<BoardListResponse>.Created(response);
     }
 
@@ -90,6 +97,11 @@ public class ListService : IListService
             .Include(l => l.Board)
                 .ThenInclude(b => b.Workspace)
                     .ThenInclude(w => w.Members)
+            .Include(l => l.Cards)
+                .ThenInclude(c => c.Comments)
+            .Include(l => l.Cards)
+                .ThenInclude(c => c.Checklists)
+                    .ThenInclude(ch => ch.Items)
             .FirstOrDefaultAsync(l => l.Id == listId, cancellationToken);
 
         if (list == null)
@@ -135,8 +147,26 @@ public class ListService : IListService
             list.Title,
             list.Position,
             list.IsArchived,
-            new List<CardSummaryResponse>()
+            list.Cards
+                .OrderBy(c => c.Position)
+                .Select(c => new CardSummaryResponse(
+                    c.Id,
+                    c.ListId,
+                    c.Title,
+                    c.Description,
+                    c.Position,
+                    c.DueDate,
+                    c.IsComplete,
+                    c.CoverColor,
+                    c.CoverImageUrl,
+                    c.Comments.Count,
+                    c.Checklists.Sum(ch => ch.Items.Count),
+                    c.Checklists.Sum(ch => ch.Items.Count(i => i.IsChecked))
+                ))
+                .ToList()
         );
+
+        await _realtimeNotifier.NotifyListUpdatedAsync(list.BoardId, response, cancellationToken);
 
         return Result<BoardListResponse>.Success(response);
     }
@@ -182,6 +212,8 @@ public class ListService : IListService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        await _realtimeNotifier.NotifyListsReorderedAsync(boardId, request.ListIds, cancellationToken);
+
         return Result<bool>.Success(true, 204);
     }
 
@@ -209,8 +241,11 @@ public class ListService : IListService
             return Result<bool>.Failure("Observers cannot delete lists.", 403);
         }
 
+        var boardId = list.BoardId;
         _dbContext.BoardLists.Remove(list);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _realtimeNotifier.NotifyListDeletedAsync(boardId, listId, cancellationToken);
 
         return Result<bool>.Success(true, 204);
     }

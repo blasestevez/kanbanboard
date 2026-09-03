@@ -11,6 +11,8 @@ backend/uploads/
 backend/appsettings.Development.json
 *.user
 *.suo
+.vs/
+backend/.vs/
 
 # Tests
 tests/**/bin/

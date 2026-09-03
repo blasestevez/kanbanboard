@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Trellochocero.Api.Extensions;
+using Trellochocero.Api.Hubs;
 using Trellochocero.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,6 +69,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<BoardHub>("/hubs/board");
 
 app.Run();
 

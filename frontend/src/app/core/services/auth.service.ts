@@ -22,7 +22,9 @@ const USER_KEY = 'trello_auth_user';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
-  private readonly apiUrl = environment.apiUrl;
+  private get apiUrl(): string {
+    return environment.apiUrl;
+  }
 
   private readonly _currentUser = signal<User | null>(this.loadUserFromStorage());
   private readonly _token = signal<string | null>(this.loadTokenFromStorage());

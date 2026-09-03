@@ -25,7 +25,9 @@ import {
 })
 export class CardService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = environment.apiUrl;
+  private get apiUrl(): string {
+    return environment.apiUrl;
+  }
 
   private readonly _activeCard = signal<CardDetail | null>(null);
   private readonly _isLoading = signal<boolean>(false);

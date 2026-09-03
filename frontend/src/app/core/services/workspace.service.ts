@@ -17,7 +17,9 @@ import {
 })
 export class WorkspaceService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = `${environment.apiUrl}/workspaces`;
+  private get apiUrl(): string {
+    return `${environment.apiUrl}/workspaces`;
+  }
 
   private readonly _workspaces = signal<WorkspaceSummary[]>([]);
   private readonly _activeWorkspace = signal<WorkspaceDetail | null>(null);

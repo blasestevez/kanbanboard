@@ -16,13 +16,46 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        var rawUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
+            ?? configuration.GetConnectionString("DefaultConnection");
+
+        if (string.IsNullOrWhiteSpace(rawUrl))
+        {
+            throw new InvalidOperationException("Connection string 'DefaultConnection' or environment variable 'DATABASE_URL' not found.");
+        }
+
+        var connectionString = ConvertDatabaseUrlToNpgsql(rawUrl);
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
 
         return services;
+    }
+
+    private static string ConvertDatabaseUrlToNpgsql(string url)
+    {
+        if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        try
+        {
+            var uri = new Uri(url);
+            var userInfo = uri.UserInfo.Split(':');
+            var user = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+            var pass = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+            var db = uri.AbsolutePath.TrimStart('/');
+            var port = uri.Port > 0 ? uri.Port : 5432;
+
+            return $"Host={uri.Host};Port={port};Database={db};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
+        }
+        catch
+        {
+            return url;
+        }
     }
 
     public static IServiceCollection AddIdentityServices(

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Trellochocero.Api.Extensions;
 using Trellochocero.Api.Middleware;
@@ -14,6 +15,24 @@ builder.Services.AddCorsPolicy();
 builder.Services.AddSwaggerDocumentation();
 
 var app = builder.Build();
+
+// Run migrations automatically on startup (PostgreSQL in cloud)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<Trellochocero.Api.Data.AppDbContext>();
+    if (db.Database.IsRelational())
+    {
+        try
+        {
+            Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(db.Database);
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Failed to apply migrations on startup.");
+        }
+    }
+}
 
 // Ensure uploads directory exists and configure static file serving
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");

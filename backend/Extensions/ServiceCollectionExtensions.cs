@@ -28,7 +28,13 @@ public static class ServiceCollectionExtensions
         var connectionString = ConvertDatabaseUrlToNpgsql(rawUrl);
 
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null);
+            }));
 
         return services;
     }
@@ -50,7 +56,12 @@ public static class ServiceCollectionExtensions
             var db = uri.AbsolutePath.TrimStart('/');
             var port = uri.Port > 0 ? uri.Port : 5432;
 
-            return $"Host={uri.Host};Port={port};Database={db};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
+            // Use SSL Mode=Prefer if internal network (railway.internal), otherwise Require
+            var sslMode = uri.Host.EndsWith("railway.internal", StringComparison.OrdinalIgnoreCase)
+                ? "Prefer"
+                : "Require";
+
+            return $"Host={uri.Host};Port={port};Database={db};Username={user};Password={pass};SSL Mode={sslMode};Trust Server Certificate=true;Include Error Detail=true";
         }
         catch
         {

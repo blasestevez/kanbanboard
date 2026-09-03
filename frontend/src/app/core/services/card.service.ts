@@ -189,6 +189,12 @@ export class CardService {
     return this.http.delete<void>(`${this.apiUrl}/attachments/${id}`);
   }
 
+  downloadAttachment(attachmentId: string, fileName: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+  }
+
   // Card Members
   assignMember(cardId: string, userId: string): Observable<void> {
     return this.http.post<void>(

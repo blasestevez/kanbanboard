@@ -18,6 +18,28 @@ public class AttachmentsController : ControllerBase
         _cardService = cardService;
     }
 
+    [HttpGet("api/attachments/{id:guid}/download")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadAttachment(Guid id, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var currentUserId))
+        {
+            return UnauthorizedProblem();
+        }
+
+        var result = await _cardService.GetAttachmentFileAsync(id, currentUserId, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return ToProblemDetails(result);
+        }
+
+        var (stream, contentType, fileName) = result.Value;
+        return File(stream, contentType, fileName);
+    }
+
     [HttpDelete("api/attachments/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

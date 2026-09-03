@@ -32,6 +32,7 @@ public interface ICardService
 
     // Attachments
     Task<Result<AttachmentResponse>> UploadAttachmentAsync(Guid cardId, IFormFile file, Guid currentUserId, CancellationToken cancellationToken = default);
+    Task<Result<(Stream Stream, string ContentType, string FileName)>> GetAttachmentFileAsync(Guid attachmentId, Guid currentUserId, CancellationToken cancellationToken = default);
     Task<Result<bool>> DeleteAttachmentAsync(Guid attachmentId, Guid currentUserId, CancellationToken cancellationToken = default);
 
     // Card Members

@@ -886,6 +886,41 @@ public class CardService : ICardService
         ));
     }
 
+    public async Task<Result<(Stream Stream, string ContentType, string FileName)>> GetAttachmentFileAsync(Guid attachmentId, Guid currentUserId, CancellationToken cancellationToken = default)
+    {
+        var attachment = await _dbContext.CardAttachments
+            .Include(ca => ca.Card)
+                .ThenInclude(c => c.List)
+                    .ThenInclude(l => l.Board)
+                        .ThenInclude(b => b.Workspace)
+                            .ThenInclude(w => w.Members)
+            .FirstOrDefaultAsync(ca => ca.Id == attachmentId, cancellationToken);
+
+        if (attachment == null)
+        {
+            return Result<(Stream Stream, string ContentType, string FileName)>.Failure("Attachment not found.", 404);
+        }
+
+        var member = attachment.Card.List.Board.Workspace.Members.FirstOrDefault(m => m.UserId == currentUserId);
+        if (member == null)
+        {
+            return Result<(Stream Stream, string ContentType, string FileName)>.Failure("You do not have access to this attachment.", 403);
+        }
+
+        var relativePath = attachment.FileUrl.TrimStart('/');
+        var fullPath = Path.Combine(Directory.GetCurrentDirectory(), relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!File.Exists(fullPath))
+        {
+            return Result<(Stream Stream, string ContentType, string FileName)>.Failure("File not found on server.", 404);
+        }
+
+        var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var contentType = !string.IsNullOrWhiteSpace(attachment.ContentType) ? attachment.ContentType : "application/octet-stream";
+
+        return Result<(Stream Stream, string ContentType, string FileName)>.Success((stream, contentType, attachment.FileName));
+    }
+
     public async Task<Result<bool>> DeleteAttachmentAsync(Guid attachmentId, Guid currentUserId, CancellationToken cancellationToken = default)
     {
         var attachment = await _dbContext.CardAttachments

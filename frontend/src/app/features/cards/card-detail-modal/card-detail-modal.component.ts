@@ -695,6 +695,25 @@ export class CardDetailModalComponent implements OnInit {
     });
   }
 
+  downloadAttachment(att: CardAttachment): void {
+    this.cardService.downloadAttachment(att.id, att.fileName).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = att.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMessage.set(this.extractErrorMessage(err));
+        this.toastService.error('Failed to download attachment.');
+      },
+    });
+  }
+
   // Delete Card
   openDeleteCardModal(): void {
     this.isDeleteConfirmOpen.set(true);

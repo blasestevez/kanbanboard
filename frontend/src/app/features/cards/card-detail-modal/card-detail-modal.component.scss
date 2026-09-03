@@ -488,10 +488,21 @@
     gap: 0.15rem;
   }
 
-  .att-filename {
+  .att-filename,
+  .att-filename-btn {
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--text-primary);
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--primary);
+    }
   }
 
   .att-submeta {

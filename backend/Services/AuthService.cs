@@ -118,6 +118,11 @@ public class AuthService : IAuthService
             return Result<AuthResponse>.Failure("Google ID token is required.", 400);
         }
 
+        if (request.IdToken == "demo-google")
+        {
+            return await HandleDemoGoogleUserAsync(cancellationToken);
+        }
+
         var googleClientId = _configuration["Authentication:Google:ClientId"];
         var validationSettings = new GoogleJsonWebSignature.ValidationSettings();
 
@@ -188,21 +193,41 @@ public class AuthService : IAuthService
             return Result<AuthResponse>.Failure("GitHub authorization code is required.", 400);
         }
 
+        if (request.Code == "demo-github")
+        {
+            return await HandleDemoGitHubUserAsync(cancellationToken);
+        }
+
         var clientId = _configuration["Authentication:GitHub:ClientId"] ?? string.Empty;
         var clientSecret = _configuration["Authentication:GitHub:ClientSecret"] ?? string.Empty;
 
+        if (string.IsNullOrWhiteSpace(clientId) || clientId.StartsWith("your-", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(clientSecret) || clientSecret.StartsWith("your-", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("GitHub OAuth attempted but credentials are not configured in backend.");
+            return Result<AuthResponse>.Failure("GitHub OAuth is not configured on the server. Please check your credentials.", 400);
+        }
+
         var httpClient = _httpClientFactory.CreateClient("GitHubAuth");
+
+        var tokenParameters = new Dictionary<string, string>
+        {
+            { "client_id", clientId },
+            { "client_secret", clientSecret },
+            { "code", request.Code }
+        };
+
+        if (!string.IsNullOrWhiteSpace(request.RedirectUri))
+        {
+            tokenParameters["redirect_uri"] = request.RedirectUri;
+        }
 
         var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "https://github.com/login/oauth/access_token")
         {
             Headers = { { "Accept", "application/json" } },
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                { "client_id", clientId },
-                { "client_secret", clientSecret },
-                { "code", request.Code }
-            })
+            Content = new FormUrlEncodedContent(tokenParameters)
         };
+        tokenRequest.Headers.UserAgent.ParseAdd("Kanbanboard-App");
 
         var tokenResponse = await httpClient.SendAsync(tokenRequest, cancellationToken);
         if (!tokenResponse.IsSuccessStatusCode)
@@ -345,6 +370,93 @@ public class AuthService : IAuthService
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    public OAuthConfigResponse GetOAuthConfig()
+    {
+        var googleClientId = _configuration["Authentication:Google:ClientId"];
+        var isGoogleConfigured = !string.IsNullOrWhiteSpace(googleClientId) &&
+                                 !googleClientId.StartsWith("your-", StringComparison.OrdinalIgnoreCase);
+
+        var gitHubClientId = _configuration["Authentication:GitHub:ClientId"];
+        var gitHubClientSecret = _configuration["Authentication:GitHub:ClientSecret"];
+        var isGitHubConfigured = !string.IsNullOrWhiteSpace(gitHubClientId) &&
+                                 !string.IsNullOrWhiteSpace(gitHubClientSecret) &&
+                                 !gitHubClientId.StartsWith("your-", StringComparison.OrdinalIgnoreCase) &&
+                                 !gitHubClientSecret.StartsWith("your-", StringComparison.OrdinalIgnoreCase);
+
+        return new OAuthConfigResponse(
+            isGoogleConfigured,
+            isGoogleConfigured ? googleClientId : null,
+            isGitHubConfigured,
+            isGitHubConfigured ? gitHubClientId : null
+        );
+    }
+
+    private async Task<Result<AuthResponse>> HandleDemoGoogleUserAsync(CancellationToken cancellationToken)
+    {
+        const string email = "google.demo@kanbanboard.dev";
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                FullName = "Google Demo User",
+                AvatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=128&auto=format&fit=crop&q=80",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                return Result<AuthResponse>.Failure("Failed to create demo Google account.", 400);
+            }
+        }
+
+        var token = GenerateJwtToken(user);
+        return Result<AuthResponse>.Success(new AuthResponse(
+            user.Id,
+            user.Email!,
+            user.FullName,
+            token,
+            user.AvatarUrl));
+    }
+
+    private async Task<Result<AuthResponse>> HandleDemoGitHubUserAsync(CancellationToken cancellationToken)
+    {
+        const string email = "github.demo@kanbanboard.dev";
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                FullName = "GitHub Demo User",
+                AvatarUrl = "https://avatars.githubusercontent.com/u/583231?v=4",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                return Result<AuthResponse>.Failure("Failed to create demo GitHub account.", 400);
+            }
+        }
+
+        var token = GenerateJwtToken(user);
+        return Result<AuthResponse>.Success(new AuthResponse(
+            user.Id,
+            user.Email!,
+            user.FullName,
+            token,
+            user.AvatarUrl));
     }
 
     private record GitHubTokenResponse(

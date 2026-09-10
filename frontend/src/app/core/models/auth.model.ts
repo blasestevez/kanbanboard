@@ -23,6 +23,14 @@ export interface GoogleAuthRequest {
 
 export interface GitHubAuthRequest {
   code: string;
+  redirectUri?: string;
+}
+
+export interface OAuthConfigResponse {
+  googleConfigured: boolean;
+  googleClientId?: string | null;
+  gitHubConfigured: boolean;
+  gitHubClientId?: string | null;
 }
 
 export interface AuthResponse {

@@ -219,4 +219,42 @@
       <a routerLink="/auth/login" class="auth-link">Log in</a>
     </div>
   </div>
+
+  @if (oauthModalProvider(); as provider) {
+    <div class="modal-backdrop" (click)="oauthModalProvider.set(null)">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">
+            Configuración de {{ provider === 'google' ? 'Google' : 'GitHub' }} OAuth
+          </h3>
+          <button type="button" class="btn-close" (click)="oauthModalProvider.set(null)">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+            El servidor aún no tiene configuradas las credenciales de
+            <strong>{{ provider === 'google' ? 'Google Client ID' : 'GitHub Client ID & Client Secret' }}</strong>.
+          </p>
+          <div class="config-guide">
+            @if (provider === 'google') {
+              Authentication:Google:ClientId
+            } @else {
+              Authentication:GitHub:ClientId<br />
+              Authentication:GitHub:ClientSecret
+            }
+          </div>
+          <p class="text-xs text-gray-500 mt-2">
+            Configura estas variables en <code>backend/appsettings.Development.json</code> o en tu panel de hosting (Railway / Render).
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-demo" (click)="loginWithDemo(provider)">
+            Probar con cuenta Demo ({{ provider === 'google' ? 'Google' : 'GitHub' }})
+          </button>
+          <button type="button" class="btn-secondary" (click)="oauthModalProvider.set(null)">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

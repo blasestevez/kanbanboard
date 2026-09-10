@@ -8,6 +8,7 @@ import {
   GitHubAuthRequest,
   GoogleAuthRequest,
   LoginRequest,
+  OAuthConfigResponse,
   RegisterRequest,
   User,
   UserProfileResponse,
@@ -51,6 +52,10 @@ export class AuthService {
       .pipe(tap((response) => this.handleAuthSuccess(response)));
   }
 
+  getOAuthConfig(): Observable<OAuthConfigResponse> {
+    return this.http.get<OAuthConfigResponse>(`${this.apiUrl}/auth/oauth-config`);
+  }
+
   googleAuth(idToken: string): Observable<AuthResponse> {
     const payload: GoogleAuthRequest = { idToken };
     return this.http
@@ -58,11 +63,82 @@ export class AuthService {
       .pipe(tap((response) => this.handleAuthSuccess(response)));
   }
 
-  githubAuth(code: string): Observable<AuthResponse> {
-    const payload: GitHubAuthRequest = { code };
+  githubAuth(code: string, redirectUri?: string): Observable<AuthResponse> {
+    const payload: GitHubAuthRequest = { code, redirectUri };
     return this.http
       .post<AuthResponse>(`${this.apiUrl}/auth/github`, payload)
       .pipe(tap((response) => this.handleAuthSuccess(response)));
+  }
+
+  redirectToGitHub(clientId: string): void {
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const scope = 'user:email';
+    const state = Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem('oauth_state', state);
+    sessionStorage.setItem('oauth_provider', 'github');
+
+    const githubUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(
+      scope
+    )}&state=${encodeURIComponent(state)}`;
+
+    window.location.href = githubUrl;
+  }
+
+  loadGoogleScript(): Promise<void> {
+    if (typeof window === 'undefined') return Promise.resolve();
+    if ((window as any).google?.accounts?.id) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('google-gsi-client');
+      if (existing) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'google-gsi-client';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar Google Identity Services'));
+      document.head.appendChild(script);
+    });
+  }
+
+  initiateGoogleLogin(clientId: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.loadGoogleScript()
+        .then(() => {
+          const google = (window as any).google;
+          if (!google?.accounts?.id) {
+            reject(new Error('Google Identity Services no está disponible.'));
+            return;
+          }
+
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response: any) => {
+              if (response?.credential) {
+                resolve(response.credential);
+              } else {
+                reject(new Error('No se recibió la credencial de Google.'));
+              }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          google.accounts.id.prompt((notification: any) => {
+            if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+              const reason = notification?.getNotDisplayedReason?.() || 'desconocida';
+              reject(new Error(`El diálogo de Google no se pudo mostrar (${reason}).`));
+            }
+          });
+        })
+        .catch(reject);
+    });
   }
 
   getProfile(): Observable<UserProfileResponse> {

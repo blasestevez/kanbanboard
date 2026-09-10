@@ -63,20 +63,42 @@ export class LoginComponent {
     });
   }
 
+  readonly oauthModalProvider = signal<'google' | 'github' | null>(null);
+
   onGoogleLogin(): void {
     if (this.isLoading()) return;
     this.errorMessage.set(null);
-    // Placeholder flow for Google OAuth
-    const dummyGoogleToken = 'google_oauth_token_placeholder';
     this.isLoading.set(true);
-    this.authService.googleAuth(dummyGoogleToken).subscribe({
-      next: () => {
-        this.isLoading.set(false);
-        this.router.navigate(['/workspaces']);
+
+    this.authService.getOAuthConfig().subscribe({
+      next: (config) => {
+        if (config.googleConfigured && config.googleClientId) {
+          this.authService
+            .initiateGoogleLogin(config.googleClientId)
+            .then((idToken) => {
+              this.authService.googleAuth(idToken).subscribe({
+                next: () => {
+                  this.isLoading.set(false);
+                  this.router.navigate(['/workspaces']);
+                },
+                error: (err: HttpErrorResponse) => {
+                  this.isLoading.set(false);
+                  this.errorMessage.set(this.extractErrorMessage(err));
+                },
+              });
+            })
+            .catch((err) => {
+              this.isLoading.set(false);
+              this.errorMessage.set(err.message || 'Error al conectar con Google.');
+            });
+        } else {
+          this.isLoading.set(false);
+          this.oauthModalProvider.set('google');
+        }
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.isLoading.set(false);
-        this.errorMessage.set(this.extractErrorMessage(err));
+        this.oauthModalProvider.set('google');
       },
     });
   }
@@ -84,10 +106,35 @@ export class LoginComponent {
   onGithubLogin(): void {
     if (this.isLoading()) return;
     this.errorMessage.set(null);
-    // Placeholder flow for GitHub OAuth
-    const dummyGithubCode = 'github_code_placeholder';
     this.isLoading.set(true);
-    this.authService.githubAuth(dummyGithubCode).subscribe({
+
+    this.authService.getOAuthConfig().subscribe({
+      next: (config) => {
+        if (config.gitHubConfigured && config.gitHubClientId) {
+          this.authService.redirectToGitHub(config.gitHubClientId);
+        } else {
+          this.isLoading.set(false);
+          this.oauthModalProvider.set('github');
+        }
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.oauthModalProvider.set('github');
+      },
+    });
+  }
+
+  loginWithDemo(provider: 'google' | 'github'): void {
+    this.oauthModalProvider.set(null);
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+
+    const auth$ =
+      provider === 'google'
+        ? this.authService.googleAuth('demo-google')
+        : this.authService.githubAuth('demo-github');
+
+    auth$.subscribe({
       next: () => {
         this.isLoading.set(false);
         this.router.navigate(['/workspaces']);

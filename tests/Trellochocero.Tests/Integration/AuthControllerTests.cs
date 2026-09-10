@@ -165,6 +165,48 @@ public class AuthControllerTests : IClassFixture<AuthControllerTests.TestWebAppF
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    // ========== OAuth Tests ==========
+
+    [Fact]
+    public async Task GetOAuthConfig_Returns200WithConfiguration()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/auth/oauth-config");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = await response.Content.ReadFromJsonAsync<OAuthConfigResponse>();
+        config.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GoogleAuth_WithDemoToken_Returns200WithToken()
+    {
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest("demo-google"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        auth.Should().NotBeNull();
+        auth!.Email.Should().Be("google.demo@kanbanboard.dev");
+        auth.Token.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task GitHubAuth_WithDemoCode_Returns200WithToken()
+    {
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/auth/github", new GitHubAuthRequest("demo-github"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        auth.Should().NotBeNull();
+        auth!.Email.Should().Be("github.demo@kanbanboard.dev");
+        auth.Token.Should().NotBeNullOrWhiteSpace();
+    }
+
     // ========== Test Factory ==========
 
     public class TestWebAppFactory : WebApplicationFactory<Program>

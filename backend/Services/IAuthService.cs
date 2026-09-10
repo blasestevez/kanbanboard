@@ -9,4 +9,5 @@ public interface IAuthService
     Task<Result<AuthResponse>> GoogleAuthAsync(GoogleAuthRequest request, CancellationToken cancellationToken = default);
     Task<Result<AuthResponse>> GitHubAuthAsync(GitHubAuthRequest request, CancellationToken cancellationToken = default);
     Task<Result<UserProfileResponse>> GetUserProfileAsync(Guid userId, CancellationToken cancellationToken = default);
+    OAuthConfigResponse GetOAuthConfig();
 }

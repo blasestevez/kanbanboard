@@ -72,6 +72,14 @@ public class AuthController : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpGet("oauth-config")]
+    [ProducesResponseType(typeof(OAuthConfigResponse), StatusCodes.Status200OK)]
+    public IActionResult GetOAuthConfig()
+    {
+        var config = _authService.GetOAuthConfig();
+        return Ok(config);
+    }
+
     private IActionResult ToProblemDetails<T>(Result<T> result)
     {
         var problemDetails = new ProblemDetails

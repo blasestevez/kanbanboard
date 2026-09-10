@@ -22,6 +22,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'callback',
+        loadComponent: () =>
+          import('./features/auth/oauth-callback/oauth-callback.component').then(
+            (m) => m.OAuthCallbackComponent
+          ),
+      },
+      {
         path: '',
         redirectTo: 'login',
         pathMatch: 'full',

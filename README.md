@@ -2,7 +2,7 @@
 
 Un tablero Kanban interactivo para gestion visual de proyectos y tareas, construido con arquitectura desacoplada y sincronizacion en tiempo real.
 
-![Kanbanboard Demo](docs/screenshots/board-preview.png)
+![Kanbanboard Demo](<img width="1719" height="961" alt="board-demo" src="https://github.com/user-attachments/assets/8e977498-5c4e-409b-90e4-d26d71143176" />)
 
 El proyecto fue desarrollado como una aplicacion completa para gestion de flujos de trabajo, priorizando una interfaz rapida e intuitiva, actualizacion colaborativa inmediata y un backend estructurado con buenas practicas de ingenieria de software.
 

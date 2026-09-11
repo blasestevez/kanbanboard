@@ -13,15 +13,11 @@ describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let authServiceSpy: {
     login: ReturnType<typeof vi.fn>;
-    googleAuth: ReturnType<typeof vi.fn>;
-    githubAuth: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
     authServiceSpy = {
       login: vi.fn(),
-      googleAuth: vi.fn(),
-      githubAuth: vi.fn(),
     };
 
     await TestBed.configureTestingModule({

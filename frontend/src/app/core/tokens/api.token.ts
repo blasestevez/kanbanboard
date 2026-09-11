@@ -4,7 +4,7 @@ export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
   providedIn: 'root',
   factory: () => {
     // 1. If user set an override in localStorage
-    const saved = localStorage.getItem('trellochocero_api_url');
+    const saved = localStorage.getItem('kanbanboard_api_url') || localStorage.getItem('trellochocero_api_url');
     if (saved) return saved.replace(/\/+$/, '');
 
     // 2. If running on localhost

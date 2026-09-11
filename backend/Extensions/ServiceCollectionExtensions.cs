@@ -91,9 +91,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var jwtKey = configuration["Jwt:Key"] ?? "SuperSecretKeyForTrellochoceroJwtAuthentication2026!MustBeAtLeast32BytesLong";
-        var jwtIssuer = configuration["Jwt:Issuer"] ?? "TrellochoceroApi";
-        var jwtAudience = configuration["Jwt:Audience"] ?? "TrellochoceroClient";
+        var jwtKey = configuration["Jwt:Key"] ?? "SuperSecretKeyForKanbanboardJwtAuthentication2026!MustBeAtLeast32BytesLong";
+        var jwtIssuer = configuration["Jwt:Issuer"] ?? "KanbanboardApi";
+        var jwtAudience = configuration["Jwt:Audience"] ?? "KanbanboardClient";
 
         services.AddAuthentication(options =>
         {
@@ -137,7 +137,6 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services)
     {
         services.AddSignalR();
-        services.AddHttpClient("GitHubAuth");
         services.AddHttpClient();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IWorkspaceService, WorkspaceService>();
@@ -174,9 +173,9 @@ public static class ServiceCollectionExtensions
         {
             options.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "Trellochocero API",
+                Title = "Kanbanboard API",
                 Version = "v1",
-                Description = "ASP.NET Core Web API for Trellochocero (Trello Clone)"
+                Description = "ASP.NET Core Web API for Kanbanboard"
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

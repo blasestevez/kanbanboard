@@ -13,15 +13,11 @@ describe('RegisterComponent', () => {
   let fixture: ComponentFixture<RegisterComponent>;
   let authServiceSpy: {
     register: ReturnType<typeof vi.fn>;
-    googleAuth: ReturnType<typeof vi.fn>;
-    githubAuth: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
     authServiceSpy = {
       register: vi.fn(),
-      googleAuth: vi.fn(),
-      githubAuth: vi.fn(),
     };
 
     await TestBed.configureTestingModule({

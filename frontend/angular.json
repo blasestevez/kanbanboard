@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "trellochocero": {
+    "kanbanboard": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -68,10 +68,10 @@
           },
           "configurations": {
             "production": {
-              "buildTarget": "trellochocero:build:production"
+              "buildTarget": "kanbanboard:build:production"
             },
             "development": {
-              "buildTarget": "trellochocero:build:development"
+              "buildTarget": "kanbanboard:build:development"
             }
           },
           "defaultConfiguration": "development"

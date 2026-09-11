@@ -17,22 +17,6 @@ export interface RegisterRequest {
   password: string;
 }
 
-export interface GoogleAuthRequest {
-  idToken: string;
-}
-
-export interface GitHubAuthRequest {
-  code: string;
-  redirectUri?: string;
-}
-
-export interface OAuthConfigResponse {
-  googleConfigured: boolean;
-  googleClientId?: string | null;
-  gitHubConfigured: boolean;
-  gitHubClientId?: string | null;
-}
-
 export interface AuthResponse {
   id: string;
   email: string;

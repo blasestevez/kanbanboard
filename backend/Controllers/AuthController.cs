@@ -44,42 +44,6 @@ public class AuthController : ControllerBase
         return Ok(result.Value);
     }
 
-    [HttpPost("google")]
-    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Google([FromBody] GoogleAuthRequest request, CancellationToken cancellationToken)
-    {
-        var result = await _authService.GoogleAuthAsync(request, cancellationToken);
-        if (!result.IsSuccess)
-        {
-            return ToProblemDetails(result);
-        }
-
-        return Ok(result.Value);
-    }
-
-    [HttpPost("github")]
-    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GitHub([FromBody] GitHubAuthRequest request, CancellationToken cancellationToken)
-    {
-        var result = await _authService.GitHubAuthAsync(request, cancellationToken);
-        if (!result.IsSuccess)
-        {
-            return ToProblemDetails(result);
-        }
-
-        return Ok(result.Value);
-    }
-
-    [HttpGet("oauth-config")]
-    [ProducesResponseType(typeof(OAuthConfigResponse), StatusCodes.Status200OK)]
-    public IActionResult GetOAuthConfig()
-    {
-        var config = _authService.GetOAuthConfig();
-        return Ok(config);
-    }
-
     private IActionResult ToProblemDetails<T>(Result<T> result)
     {
         var problemDetails = new ProblemDetails

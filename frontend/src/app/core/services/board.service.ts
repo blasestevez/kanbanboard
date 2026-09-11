@@ -82,11 +82,8 @@ export class BoardService {
       .pipe(
         tap((newList) => {
           const board = this._activeBoard();
-          if (board && board.id === boardId) {
-            this._activeBoard.set({
-              ...board,
-              lists: [...board.lists, newList],
-            });
+          if (board && (board.id === boardId || board.id?.toLowerCase() === boardId?.toLowerCase())) {
+            this.addListToActiveBoard(newList);
           }
         })
       );
@@ -95,13 +92,7 @@ export class BoardService {
   updateList(id: string, req: UpdateListRequest): Observable<BoardList> {
     return this.http.put<BoardList>(`${this.apiUrl}/lists/${id}`, req).pipe(
       tap((updatedList) => {
-        const board = this._activeBoard();
-        if (board) {
-          this._activeBoard.set({
-            ...board,
-            lists: board.lists.map((l) => (l.id === id ? updatedList : l)),
-          });
-        }
+        this.updateListInActiveBoard(updatedList);
       })
     );
   }
@@ -117,13 +108,7 @@ export class BoardService {
   deleteList(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/lists/${id}`).pipe(
       tap(() => {
-        const board = this._activeBoard();
-        if (board) {
-          this._activeBoard.set({
-            ...board,
-            lists: board.lists.filter((l) => l.id !== id),
-          });
-        }
+        this.removeListFromActiveBoard(id);
       })
     );
   }
@@ -151,7 +136,15 @@ export class BoardService {
   addListToActiveBoard(newList: BoardList): void {
     const b = this._activeBoard();
     if (!b) return;
-    if (b.lists.some((l) => l.id === newList.id)) return;
+    if (
+      b.lists.some(
+        (l) =>
+          l.id === newList.id ||
+          (l.id && newList.id && l.id.toLowerCase() === newList.id.toLowerCase())
+      )
+    ) {
+      return;
+    }
     const cards = newList.cards ?? [];
     this._activeBoard.set({
       ...b,
@@ -165,7 +158,8 @@ export class BoardService {
     this._activeBoard.set({
       ...b,
       lists: b.lists.map((l) =>
-        l.id === updatedList.id
+        l.id === updatedList.id ||
+        (l.id && updatedList.id && l.id.toLowerCase() === updatedList.id.toLowerCase())
           ? {
               ...l,
               title: updatedList.title,
@@ -182,7 +176,11 @@ export class BoardService {
     if (!b) return;
     this._activeBoard.set({
       ...b,
-      lists: b.lists.filter((l) => l.id !== listId),
+      lists: b.lists.filter(
+        (l) =>
+          l.id !== listId &&
+          (!l.id || !listId || l.id.toLowerCase() !== listId.toLowerCase())
+      ),
     });
   }
 
@@ -257,14 +255,17 @@ export class BoardService {
     const summary = this.toCardSummary(card);
     let cardFound = false;
 
+    const matchesId = (id1?: string | null, id2?: string | null) =>
+      Boolean(id1 && id2 && (id1 === id2 || id1.toLowerCase() === id2.toLowerCase()));
+
     const updatedLists = b.lists.map((l) => {
-      const idx = l.cards.findIndex((c) => c.id === summary.id);
+      const idx = l.cards.findIndex((c) => matchesId(c.id, summary.id));
       if (idx !== -1) {
         cardFound = true;
-        if (summary.listId && summary.listId !== l.id) {
+        if (summary.listId && !matchesId(summary.listId, l.id)) {
           return {
             ...l,
-            cards: l.cards.filter((c) => c.id !== summary.id),
+            cards: l.cards.filter((c) => !matchesId(c.id, summary.id)),
           };
         }
         const newCards = [...l.cards];
@@ -277,16 +278,9 @@ export class BoardService {
       };
     });
 
-    if (cardFound) {
-      const targetList = updatedLists.find((l) => l.id === summary.listId);
-      if (targetList && !targetList.cards.some((c) => c.id === summary.id)) {
-        targetList.cards.push(summary);
-      }
-    } else {
-      const targetList = updatedLists.find((l) => l.id === summary.listId);
-      if (targetList) {
-        targetList.cards.push(summary);
-      }
+    const targetList = updatedLists.find((l) => matchesId(l.id, summary.listId));
+    if (targetList && !targetList.cards.some((c) => matchesId(c.id, summary.id))) {
+      targetList.cards.push(summary);
     }
 
     this._activeBoard.set({

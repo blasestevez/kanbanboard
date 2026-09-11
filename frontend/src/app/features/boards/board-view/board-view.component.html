@@ -46,10 +46,10 @@
         <div
           class="live-status-badge"
           [class.connected]="isRealtimeConnected()"
-          [title]="isRealtimeConnected() ? 'Sincronizado en tiempo real' : 'Conectando tiempo real...'"
+          [title]="isRealtimeConnected() ? 'Syncing in real time' : 'Connecting in real time...'"
         >
           <span class="live-dot"></span>
-          <span class="live-text">{{ isRealtimeConnected() ? 'En Vivo' : 'Conectando...' }}</span>
+          <span class="live-text">{{ isRealtimeConnected() ? 'Live' : 'Connecting...' }}</span>
         </div>
       </div>
 

@@ -1,61 +1,74 @@
-﻿# Kanbanboard
+# Kanbanboard
 
 Un tablero Kanban interactivo para gestion visual de proyectos y tareas, construido con arquitectura desacoplada y sincronizacion en tiempo real.
+
+![Kanbanboard Demo](docs/screenshots/board-preview.png)
 
 El proyecto fue desarrollado como una aplicacion completa para gestion de flujos de trabajo, priorizando una interfaz rapida e intuitiva, actualizacion colaborativa inmediata y un backend estructurado con buenas practicas de ingenieria de software.
 
 ## Funcionalidades principales
 
-- Espacios de trabajo y tableros: Organizacion jerarquica de proyectos con membresias y roles.
-- Tableros dinamicos: Creacion de columnas y tarjetas con reordenamiento mediante drag and drop fluido.
-- Colaboracion en tiempo real: Notificacion inmediata de movimientos y ediciones entre usuarios conectados al mismo tablero a traves de WebSockets.
-- Detalle de tarjetas: Soporte para descripciones enriquecidas, listas de verificacion (checklists) con calculo de progreso, comentarios, etiquetas tematicas, fechas de vencimiento y carga de archivos adjuntos.
-- Autenticacion y seguridad: Registro e inicio de sesion con tokens JWT, soporte para autenticacion externa (OAuth con Google y GitHub) y proteccion de rutas.
-- Personalizacion: Fondos tematicos por tablero y colores de portada por tarjeta.
+- Espacios de trabajo y tableros: Organizacion jerarquica de proyectos con membresias y roles (Owner, Member, Observer).
+- Tableros dinamicos: Creacion y gestion de columnas y tarjetas con reordenamiento mediante drag and drop fluido tanto horizontal como vertical.
+- Colaboracion en tiempo real: Notificacion inmediata de movimientos, creaciones y ediciones entre usuarios conectados al mismo tablero a traves de WebSockets con SignalR.
+- Detalle de tarjetas: Soporte para descripciones enriquecidas, listas de tareas (checklists) con calculo automatico de progreso, comentarios en hilo, etiquetas tematicas, fechas de vencimiento y carga de archivos adjuntos.
+- Autenticacion y seguridad: Registro e inicio de sesion con tokens JWT, almacenamiento seguro de credenciales mediante ASP.NET Core Identity y proteccion de rutas con guards en el cliente.
+- Personalizacion: Paleta de temas visuales por tablero y barras de color de portada por tarjeta.
 
 ## Arquitectura y tecnologias
 
 El proyecto sigue una arquitectura desacoplada cliente-servidor:
 
 ### Frontend
-- Framework: Angular 21 utilizando signals, componentes standalone y el nuevo flujo de control nativo.
-- Diseno y estilos: Tailwind CSS, con diseno responsivo y enfocado en la usabilidad.
-- Drag and drop: Angular CDK DragDrop para una interaccion natural de arrastrar y soltar.
-- Comunicacion en tiempo real: Cliente de SignalR para recepcion de eventos push desde el servidor.
-- Hosting: Vercel (distribucion global como Single Page Application con proxy inverso a los endpoints del backend).
+- Framework: Angular 21 utilizando signals, componentes standalone y la sintaxis de control flow nativa (@if, @for).
+- Diseno y estilos: SCSS modular con variables CSS, transiciones suaves y diseno responsivo.
+- Drag and drop: Angular CDK DragDrop para una interaccion natural y accesible de arrastrar y soltar.
+- Comunicacion en tiempo real: Cliente de SignalR con gestion de reconexion automatica e identificacion por tablero.
+- Testing: Vitest integrado con Angular TestBed para pruebas unitarias de componentes y servicios.
 
 ### Backend
-- Framework: .NET 10 (ASP.NET Core Web API).
-- Acceso a datos: Entity Framework Core con PostgreSQL (Npgsql), incluyendo migraciones automaticas en despliegue.
-- Comunicacion bidireccional: ASP.NET Core SignalR para difusion de cambios entre miembros del tablero.
-- Autenticacion: JWT Bearer Tokens y BCrypt para almacenamiento seguro de credenciales.
-- Contenedores: Dockerfile multi-etapa listo para despliegue continuo.
+- Framework: .NET 10 (C# / ASP.NET Core Web API).
+- Acceso a datos: Entity Framework Core con PostgreSQL (Npgsql), incluyendo migraciones automaticas en el arranque.
+- Comunicacion bidireccional: ASP.NET Core SignalR con agrupamiento por canal (board-id).
+- Seguridad y autenticacion: ASP.NET Core Identity con JWT Bearer Tokens.
+- Testing: Bateria de pruebas de integracion en .NET con xUnit, FluentAssertions y WebApplicationFactory.
+- Contenedores: Dockerfile multi-etapa optimizado para produccion.
 
 ## Estructura del repositorio
 
-- backend/: Solucion en .NET 10 con controladores REST, servicios de aplicacion, repositorios y configuracion de SignalR.
-- frontend/: Codigo fuente de la aplicacion en Angular, dividido por modulos funcionales, servicios de estado y componentes.
-- tests/: Bateria de pruebas de integracion en .NET con xUnit y FluentAssertions.
-- docs/: Contratos de API documentados y arquitectura del flujo de trabajo.
+- backend/: Solucion en .NET 10 con controladores REST, servicios de aplicacion, DTOs, entidades y configuracion de SignalR.
+- frontend/: Codigo fuente de la aplicacion en Angular, estructurado en carpetas core, features, layout y shared.
+- tests/: Pruebas de integracion del backend que validan autenticacion, tableros, listas y autorizacion de roles.
+- docs/: Especificaciones tecnicas de la API y capturas de pantalla.
 
 ## Como ejecutar el proyecto en local
 
 ### Requisitos previos
 - .NET 10 SDK
-- Node.js 20 o superior
-- Instancia de PostgreSQL (local o en Docker)
+- Node.js 20 o superior y npm
+- Docker (para la base de datos PostgreSQL)
 
-### 1. Configurar y levantar el Backend
-1. Define la cadena de conexion a PostgreSQL en `backend/appsettings.Development.json` o mediante variable de entorno `ConnectionStrings__DefaultConnection`.
-2. Posicionate en la carpeta `backend` y corre la aplicacion:
+### 1. Iniciar la base de datos (PostgreSQL)
+
+Si utilizas Docker, puedes iniciar el contenedor de base de datos con el siguiente comando:
+
+```bash
+docker run --name kanbanboard-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=kanbanboard -p 5432:5432 -d postgres
+```
+
+### 2. Configurar y levantar el Backend
+
+1. Verifica la cadena de conexion en `backend/appsettings.Development.json` (por defecto apunta a `localhost:5432` con usuario y contrasena `postgres`).
+2. Desde la raiz del proyecto, inicia la API:
    ```bash
-   cd backend
-   dotnet run
+   dotnet run --project backend/Trellochocero.Api.csproj
    ```
-El backend aplicara las migraciones y quedara disponible en `https://localhost:5001`.
+3. El backend ejecutara las migraciones automaticamente y quedara escuchando en `http://localhost:5000` y `https://localhost:5001`.
+4. La documentacion interactiva de endpoints esta disponible en `https://localhost:5001/` (Swagger UI).
 
-### 2. Configurar y levantar el Frontend
-1. Ingresa a la carpeta `frontend`:
+### 3. Configurar y levantar el Frontend
+
+1. En una nueva terminal, ingresa a la carpeta `frontend`:
    ```bash
    cd frontend
    npm install
@@ -63,6 +76,25 @@ El backend aplicara las migraciones y quedara disponible en `https://localhost:5
    ```
 2. Abre tu navegador en `http://localhost:4200`.
 
+### 4. Ejecucion de pruebas
+
+- Pruebas del Backend:
+  ```bash
+  dotnet test tests/Trellochocero.Tests/Trellochocero.Tests.csproj
+  ```
+- Pruebas del Frontend:
+  ```bash
+  cd frontend
+  npm test
+  ```
+
+## Despliegue y Hosting
+
+- Frontend: Desplegado en Vercel como Single Page Application con reglas de rewrite para el routing de Angular y proxy reverso hacia la API.
+- Backend y Base de Datos: Desplegado en Railway con contenedor Docker para la API de .NET 10 y base de datos gestionada PostgreSQL.
+
 ## Autor
 
 Desarrollado por Blas Estevez.
+- GitHub: [https://github.com/blasestevez](https://github.com/blasestevez)
+

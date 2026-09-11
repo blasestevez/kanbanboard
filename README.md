@@ -92,9 +92,3 @@ docker run --name kanbanboard-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ka
 
 - Frontend: Desplegado en Vercel como Single Page Application con reglas de rewrite para el routing de Angular y proxy reverso hacia la API.
 - Backend y Base de Datos: Desplegado en Railway con contenedor Docker para la API de .NET 10 y base de datos gestionada PostgreSQL.
-
-## Autor
-
-Desarrollado por Blas Estevez.
-- GitHub: [https://github.com/blasestevez](https://github.com/blasestevez)
-

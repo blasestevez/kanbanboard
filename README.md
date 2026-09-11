@@ -39,7 +39,6 @@ El proyecto sigue una arquitectura desacoplada cliente-servidor:
 - backend/: Solucion en .NET 10 con controladores REST, servicios de aplicacion, DTOs, entidades y configuracion de SignalR.
 - frontend/: Codigo fuente de la aplicacion en Angular, estructurado en carpetas core, features, layout y shared.
 - tests/: Pruebas de integracion del backend que validan autenticacion, tableros, listas y autorizacion de roles.
-- docs/: Especificaciones tecnicas de la API y capturas de pantalla.
 
 ## Como ejecutar el proyecto en local
 

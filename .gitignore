@@ -23,4 +23,8 @@ tests/**/obj/
 Thumbs.db
 *.log
 
-.agents
+# Agents, Skills and Workflow
+.agents/
+skills-lock.json
+**/AGENTS.md
+docs/

@@ -22,3 +22,5 @@ tests/**/obj/
 .DS_Store
 Thumbs.db
 *.log
+
+.agents
